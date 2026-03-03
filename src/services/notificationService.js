@@ -37,6 +37,21 @@ const notifyCustomerStatusUpdate = async (userId, orderId, newStatus) => {
     return sendTo(userId, text);
 };
 
+const notifyAdminsInterest = async (data) => {
+    try {
+        const admins = await userRepo.getAllAdmins();
+        const text = texts.getAdminInterestNotify(data);
+        const targetIds = new Set(admins.map(a => String(a.telegram_id)));
+        targetIds.add(String(config.MASTER_ADMIN_ID));
+        
+        for (const id of targetIds) {
+            sendTo(id, text);
+        }
+    } catch (error) {
+        console.error('Notify Interest Error:', error.message);
+    }
+};
+
 const notifyAdminsNewOrder = async (data) => {
     try {
         const admins = await userRepo.getAllAdmins();
@@ -123,6 +138,22 @@ const notifyAdminsPing = async (data) => {
     } catch (error) { console.error(error.message); }
 };
 
+const notifyAdminsContact = async (data) => {
+    try {
+        const text = texts.getAdminContactNotify(data);
+        const keyboard = { inline_keyboard: [
+            [{ text: '👤 Kontaktieren', url: `tg://user?id=${data.userId}` }],
+            [{ text: '📋 Bestellung öffnen', callback_data: `oview_${data.orderId}` }]
+        ]};
+        const admins = await userRepo.getAllAdmins();
+        const targetIds = new Set(admins.map(a => String(a.telegram_id)));
+        targetIds.add(String(config.MASTER_ADMIN_ID));
+        for (const id of targetIds) {
+            sendTo(id, text, { reply_markup: keyboard });
+        }
+    } catch (error) { console.error(error.message); }
+};
+
 const notifyMasterBan = async (data) => {
     try {
         const text = texts.getMasterBanNotify(data);
@@ -148,7 +179,7 @@ const sendBroadcast = async (text, adminId) => {
 };
 
 module.exports = {
-    init, sendTo, sendOrderReceipt, notifyCustomerStatusUpdate,
-    notifyAdminsNewOrder, notifyAdminsTxId, notifyAdminsPing,
-    notifyMasterBan, sendBroadcast
+    init, sendTo, editAdminMessage, sendOrderReceipt, notifyCustomerStatusUpdate,
+    notifyAdminsInterest, notifyAdminsNewOrder, notifyAdminsTxId, 
+    notifyAdminsPing, notifyAdminsContact, notifyMasterBan, sendBroadcast
 };

@@ -111,6 +111,7 @@ module.exports = (bot) => {
             await uiHelper.updateOrSend(ctx, payload.text, payload.reply_markup);
         } catch (error) { console.error(error.message); }
     });
+
     bot.action(/^ostatus_([a-zA-Z0-9]+)_(.+)$/, isAdmin, async (ctx) => {
         try {
             const orderId = ctx.match[1];
@@ -205,6 +206,7 @@ module.exports = (bot) => {
     bot.on('message', async (ctx, next) => {
         if (!ctx.session || !ctx.message.text) return next();
         const input = ctx.message.text.trim();
+        
         if (input.startsWith('/')) {
             ctx.session.awaitingTxId = null;
             ctx.session.awaitingNote = null;
@@ -222,8 +224,9 @@ module.exports = (bot) => {
                 const formattedContent = input.split(',').map(item => `▪️ ${item.trim()}`).join('\n');
                 const customerMessage = texts.getDigitalDeliveryCustomerMessage(orderId, formattedContent);
                 const sentMsg = await bot.telegram.sendMessage(order.user_id, customerMessage, { parse_mode: 'Markdown' }).catch(() => null);
+                
                 if (sentMsg) {
-                    const updated = await orderRepo.updateOrderStatus(orderId, 'abgeschlossen');
+                    await orderRepo.updateOrderStatus(orderId, 'abgeschlossen');
                     await orderRepo.addNotificationMsgId(orderId, sentMsg.chat.id, sentMsg.message_id);
                     await orderRepo.addAdminNote(orderId, ctx.from.username || ctx.from.id, `Digitale Lieferung gesendet.`);
                     await ctx.reply(texts.getDigitalDeliverySuccess(orderId), { 

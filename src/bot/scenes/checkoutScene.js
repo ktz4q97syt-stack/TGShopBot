@@ -115,6 +115,15 @@ const checkoutScene = new Scenes.WizardScene(
                     const paymentMethod = await paymentRepo.getPaymentMethod(paymentId);
                     ctx.wizard.state.paymentMethod = paymentMethod;
 
+                    const username = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
+                    if (notificationService.notifyAdminsInterest) {
+                        notificationService.notifyAdminsInterest({
+                            username: username,
+                            total: formatters.formatPrice(ctx.wizard.state.cartTotal),
+                            paymentName: paymentMethod.name
+                        }).catch(() => {});
+                    }
+
                     const invoiceText = formatters.formatInvoice(
                         ctx.wizard.state.orderDetails,
                         ctx.wizard.state.cartTotal,
@@ -170,6 +179,7 @@ const checkoutScene = new Scenes.WizardScene(
         }
     }
 );
+
 async function showPaymentSelection(ctx) {
     try {
         const paymentMethods = await paymentRepo.getActivePaymentMethods();
@@ -247,14 +257,14 @@ async function finalizeOrder(ctx) {
             await orderRepo.addNotificationMsgId(order.order_id, sentReceipt.chat.id, sentReceipt.message_id);
         }
 
-        notificationService.notifyAdminsNewOrder({
+        await notificationService.notifyAdminsNewOrder({
             userId, username, orderDetails,
             total: parseFloat(cartTotal).toFixed(2),
             paymentName: paymentMethodName,
             orderId: order.order_id,
             shippingLink: ctx.wizard.state.shippingLink,
             deliveryMethod
-        }).catch(() => {});
+        }).catch(e => console.error('Admin Notify Error:', e.message));
 
         return ctx.scene.leave();
     } catch (error) {
