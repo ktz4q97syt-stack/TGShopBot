@@ -1,3 +1,8 @@
+const escapeMarkdown = (text) => {
+    if (!text) return '';
+    return String(text).replace(/([_*`\[\]])/g, '\\$1');
+};
+
 const formatPrice = (amount) => {
     const num = parseFloat(amount);
     if (isNaN(num)) return '0,00 €';
@@ -8,26 +13,36 @@ const formatInvoice = (items, total, paymentMethod, orderId = null) => {
     let text = '📦 *Bestellübersicht*\n';
     
     if (orderId) {
-        text += `🆔 *Bestellung:* #${orderId}\n`;
+        text += `🆔 *Bestellung:* #${escapeMarkdown(orderId)}\n`;
     }
     
     text += '\n';
 
     items.forEach(item => {
-        const path = item.category_path ? `_${item.category_path}_ » ` : '';
-        text += `▪️ ${item.quantity}x ${path}${item.name} (${formatPrice(item.price)}) = ${formatPrice(item.total)}\n`;
+        // UPDATE: Kategorie-Pfad und Produktname werden vor dem Einfügen entschärft!
+        const safePath = item.category_path ? escapeMarkdown(item.category_path) : '';
+        const pathString = safePath ? `_${safePath}_ » ` : ''; 
+        const safeName = escapeMarkdown(item.name);
+        
+        text += `▪️ ${item.quantity}x ${pathString}${safeName} (${formatPrice(item.price)}) = ${formatPrice(item.total)}\n`;
     });
 
     text += `\n━━━━━━━━━━━━━━━\n`;
     text += `💰 *Gesamtsumme: ${formatPrice(total)}*\n`;
-    text += `💳 *Zahlung:* ${paymentMethod.name}\n`;
+    
+    // UPDATE: Auch der Name der Zahlungsart wird entschärft
+    const safePaymentName = escapeMarkdown(paymentMethod.name);
+    text += `💳 *Zahlung:* ${safePaymentName}\n`;
 
     if (paymentMethod.wallet_address) {
+        // Wallet-Adressen stehen in einem Code-Block (`), die müssen so bleiben wie sie sind.
         text += `\n📋 *Zahlungsadresse:*\n\`${paymentMethod.wallet_address}\`\n_(Tippe zum Kopieren)_\n`;
     }
 
     if (paymentMethod.description) {
-        text += `\n📝 *Hinweis:* _${paymentMethod.description}_\n`;
+        // UPDATE: Beschreibung der Zahlungsart entschärfen
+        const safeDesc = escapeMarkdown(paymentMethod.description);
+        text += `\n📝 *Hinweis:* _${safeDesc}_\n`;
     }
 
     return text;
@@ -56,6 +71,7 @@ const formatDate = (dateString) => {
 };
 
 module.exports = {
+    escapeMarkdown,
     formatPrice,
     formatInvoice,
     formatDate

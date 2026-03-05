@@ -11,6 +11,13 @@ const isPrivnoteLink = (text) => {
     return /^https?:\/\/(www\.)?privnote\.com\/[^\s]+/i.test(text.trim());
 };
 
+// NEU: Der Schild gegen Telegrams Markdown-Crashes!
+const escapeMarkdown = (text) => {
+    if (!text) return '';
+    // Entschärft Unterstriche, Sternchen, Backticks und eckige Klammern
+    return String(text).replace(/([_*`\[\]])/g, '\\$1');
+};
+
 const checkoutScene = new Scenes.WizardScene(
     'checkoutScene',
     async (ctx) => {
@@ -115,7 +122,10 @@ const checkoutScene = new Scenes.WizardScene(
                     const paymentMethod = await paymentRepo.getPaymentMethod(paymentId);
                     ctx.wizard.state.paymentMethod = paymentMethod;
 
-                    const username = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
+                    // UPDATE: Geschützter Username
+                    const rawName = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
+                    const username = escapeMarkdown(rawName);
+
                     if (notificationService.notifyAdminsInterest) {
                         notificationService.notifyAdminsInterest({
                             username: username,
@@ -215,7 +225,10 @@ async function showPaymentSelection(ctx) {
 async function finalizeOrder(ctx) {
     try {
         const userId = ctx.from.id;
-        const username = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
+        // UPDATE: Geschützter Username
+        const rawName = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
+        const username = escapeMarkdown(rawName);
+        
         const cartTotal = ctx.wizard.state.cartTotal;
         const orderDetails = ctx.wizard.state.orderDetails;
 
@@ -257,6 +270,7 @@ async function finalizeOrder(ctx) {
             await orderRepo.addNotificationMsgId(order.order_id, sentReceipt.chat.id, sentReceipt.message_id);
         }
 
+        // UPDATE: Username ist hier bereits durch 'escapeMarkdown' gelaufen
         await notificationService.notifyAdminsNewOrder({
             userId, username, orderDetails,
             total: parseFloat(cartTotal).toFixed(2),

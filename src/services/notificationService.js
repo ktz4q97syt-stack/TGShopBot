@@ -9,21 +9,40 @@ const init = (bot) => {
     botInstance = bot;
 };
 
+// KUGELSICHERES SENDEN INKLUSIVE FALLBACK
 const sendTo = async (chatId, text, options = {}) => {
     if (!botInstance) throw new Error('NotificationService not initialized');
     try {
+        // Erster Versuch: Schön formatiert mit Markdown
         return await botInstance.telegram.sendMessage(chatId, text, { parse_mode: 'Markdown', ...options });
     } catch (e) {
-        return null;
+        console.warn(`[Bot] Markdown Error für Chat ${chatId} (${e.message}). Versuche sicheren Fallback...`);
+        try {
+            // Zweiter Versuch (Fallback): Wenn Markdown crasht, sende es als reinen Text!
+            const fallbackOptions = { ...options };
+            delete fallbackOptions.parse_mode; 
+            return await botInstance.telegram.sendMessage(chatId, text, fallbackOptions);
+        } catch (fallbackError) {
+            console.error(`[Bot] Fataler Sende-Fehler für Chat ${chatId}:`, fallbackError.message);
+            return null;
+        }
     }
 };
 
+// KUGELSICHERES EDITIEREN INKLUSIVE FALLBACK
 const editAdminMessage = async (chatId, messageId, text, options = {}) => {
     if (!botInstance) return null;
     try {
         return await botInstance.telegram.editMessageText(chatId, messageId, null, text, { parse_mode: 'Markdown', ...options });
     } catch (e) {
-        return null;
+        console.warn(`[Bot] Edit Markdown Error für Chat ${chatId} (${e.message}). Versuche sicheren Fallback...`);
+        try {
+            const fallbackOptions = { ...options };
+            delete fallbackOptions.parse_mode;
+            return await botInstance.telegram.editMessageText(chatId, messageId, null, text, fallbackOptions);
+        } catch (fallbackError) {
+            return null;
+        }
     }
 };
 
