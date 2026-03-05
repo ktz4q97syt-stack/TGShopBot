@@ -1,4 +1,9 @@
-const { Telegraf, Scenes, session } = require('telegraf');
+/*
+ * © 2026 t.me/autoacts. Alle Rechte vorbehalten.
+ * PROPRIETARY LICENSE. Weiterverkauf, Weitergabe und Vervielfältigung sind strengstens untersagt.
+ * Siehe LICENSE Datei für Details.
+ */
+ const { Telegraf, Scenes, session } = require('telegraf');
 const http = require('http');
 const config = require('./config');
 

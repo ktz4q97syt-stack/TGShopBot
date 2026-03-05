@@ -194,8 +194,11 @@ module.exports = {
     getFeedbackThanks: () => 
         `✅ *Vielen Dank!*\n\nDein Feedback wurde erfolgreich übermittelt und wird nach kurzer Prüfung veröffentlicht.`,
 
-    getPublicFeedbacksHeader: () => 
-        `⭐ *Kunden-Feedbacks*\n\nHier siehst du die Bewertungen unserer letzten Kunden:\n\n`,
+    // UPDATE: Header mit Sterne-Durchschnitt und Gesamtanzahl
+    getPublicFeedbacksHeader: (average, total) => 
+        `⭐ *Kunden-Feedbacks*\n` +
+        `📊 Durchschnitt: *${average} / 5.0* (${total} Bewertungen)\n` +
+        `➖➖➖➖➖➖➖➖➖➖\n\n`,
 
     getPublicFeedbacksEmpty: () => 
         `⭐ *Kunden-Feedbacks*\n\nBisher wurden noch keine Feedbacks freigegeben. Werde der Erste!`

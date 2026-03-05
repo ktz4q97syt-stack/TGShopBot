@@ -24,20 +24,46 @@ async function saveFeedback(data) {
     }
 }
 
-async function getApprovedFeedbacks(limit = 10) {
+// UPDATE: Jetzt mit Pagination (offset) und Count-Ausgabe für die Seiten!
+async function getApprovedFeedbacks(limit = 10, offset = 0) {
+    try {
+        const { data, count, error } = await supabase
+            .from('feedbacks')
+            .select('*', { count: 'exact' })
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        return { data: data || [], count: count || 0 };
+    } catch (error) {
+        console.error('Error fetching approved feedbacks:', error.message);
+        return { data: [], count: 0 };
+    }
+}
+
+// NEU: Holt alle aktiven Ratings und berechnet den Sterne-Durchschnitt!
+async function getFeedbackStats() {
     try {
         const { data, error } = await supabase
             .from('feedbacks')
-            .select('*')
-            .eq('status', 'approved')
-            .order('created_at', { ascending: false })
-            .limit(limit);
+            .select('rating')
+            .eq('status', 'approved');
 
         if (error) throw error;
-        return data;
+
+        if (!data || data.length === 0) {
+            return { average: 0, total: 0 };
+        }
+
+        const total = data.length;
+        const sum = data.reduce((acc, curr) => acc + curr.rating, 0);
+        const average = (sum / total).toFixed(1);
+
+        return { average: parseFloat(average), total };
     } catch (error) {
-        console.error('Error fetching approved feedbacks:', error.message);
-        return [];
+        console.error('Error fetching feedback stats:', error.message);
+        return { average: 0, total: 0 };
     }
 }
 
@@ -77,6 +103,7 @@ async function hasUserAlreadyFeedbacked(orderId) {
 module.exports = {
     saveFeedback,
     getApprovedFeedbacks,
+    getFeedbackStats,
     updateFeedbackStatus,
     hasUserAlreadyFeedbacked
 };

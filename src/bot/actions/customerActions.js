@@ -109,16 +109,25 @@ module.exports = (bot) => {
         }
     });
 
-    bot.action('view_feedbacks', async (ctx) => {
+    // UPDATE: Feedbacks seitenweise anzeigen mit Sterne-Durchschnitt!
+    bot.action(/^view_feedbacks(?:_(\d+))?$/, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
-            const feedbacks = await feedbackRepo.getApprovedFeedbacks(10);
+            const page = ctx.match && ctx.match[1] ? parseInt(ctx.match[1]) : 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const stats = await feedbackRepo.getFeedbackStats();
+            const { data: feedbacks, count: totalFeedbacks } = await feedbackRepo.getApprovedFeedbacks(limit, offset);
+            
             let text = '';
+            const inline_keyboard = [];
             
             if (!feedbacks || feedbacks.length === 0) {
                 text = texts.getPublicFeedbacksEmpty();
             } else {
-                text = texts.getPublicFeedbacksHeader();
+                // Übergeben der Stats an die Text-Funktion (passen wir gleich an!)
+                text = texts.getPublicFeedbacksHeader(stats.average, stats.total);
                 feedbacks.forEach(fb => {
                     const stars = '⭐'.repeat(fb.rating);
                     const date = new Date(fb.created_at).toLocaleDateString('de-DE');
@@ -126,17 +135,35 @@ module.exports = (bot) => {
                     if (fb.comment) text += `_"${fb.comment}"_\n`;
                     text += `\n`;
                 });
+
+                // Paginierung (Blättern) aufbauen
+                const totalPages = Math.ceil(totalFeedbacks / limit);
+                if (totalPages > 1) {
+                    const navRow = [];
+                    if (page > 1) {
+                        navRow.push({ text: '⬅️', callback_data: `view_feedbacks_${page - 1}` });
+                    }
+                    navRow.push({ text: `Seite ${page} / ${totalPages}`, callback_data: 'ignore_click' });
+                    if (page < totalPages) {
+                        navRow.push({ text: '➡️', callback_data: `view_feedbacks_${page + 1}` });
+                    }
+                    inline_keyboard.push(navRow);
+                }
             }
 
-            const kb = { inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'back_to_main' }]] };
-            await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: kb }).catch(async () => {
-                await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: kb });
+            inline_keyboard.push([{ text: '🔙 Zurück', callback_data: 'back_to_main' }]);
+            
+            await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard } }).catch(async () => {
+                await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard } });
             });
         } catch (error) {
             console.error('View Feedbacks Error:', error.message);
             ctx.reply('❌ Fehler beim Laden der Feedbacks.').catch(() => {});
         }
     });
+
+    // Dummy-Handler für die "Seite X von Y" Anzeige (damit der Bot nicht abstürzt, wenn man draufklickt)
+    bot.action('ignore_click', (ctx) => ctx.answerCbQuery().catch(() => {}));
 
     bot.action(/^start_feedback_(.+)$/, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});

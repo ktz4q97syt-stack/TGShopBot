@@ -122,3 +122,18 @@ Approval-Workflow: Admin-Aktionen (Preisänderungen, Löschungen) erfordern Mast
 Datenbanksicherheit: Row Level Security (RLS) aktiv. Der Bot arbeitet sicher über den Service Role Key.  
 Tech Stack: Node.js, Telegraf v4, Supabase (PostgreSQL), Render.com.  
 <!-- end list -->
+
+---
+
+## 📄 Lizenz & Nutzungsbedingungen
+
+© 2026 t.me/autoacts. Alle Rechte vorbehalten.
+
+Mit dem Erhalt oder Erwerb dieser Software wird dir eine **einfache, nicht-exklusive und nicht-übertragbare Nutzungslizenz** für den eigenen Gebrauch eingeräumt.
+
+❌ **Folgendes ist strengstens untersagt:**
+- Der Weiterverkauf (Reselling) der Software, des Codes oder Teilen davon.
+- Die Weitergabe, Veröffentlichung oder Unterlizenzierung an Dritte.
+- Das Kopieren des Codes, um ihn als eigenes Produkt (White-Labeling) auf den Markt zu bringen.
+
+Dieses Projekt ist **keine** Open-Source-Software. Jegliche Zuwiderhandlung führt zum sofortigen Entzug der Nutzungslizenz und kann rechtliche Konsequenzen nach sich ziehen.
