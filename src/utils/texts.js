@@ -26,7 +26,7 @@ module.exports = {
     getAdminInterestNotify: (data) =>
         `👀 *KAUFINTERESSE*\n\n` +
         `👤 Kunde: ${data.username}\n` +
-        `💰 Warenkorb: ${data.total}€\n` +
+        `💰 Warenkorb: ${data.total}\n` +
         `💳 Gewählte Methode: ${data.paymentName}\n\n` +
         `_Kunde befindet sich gerade im Checkout._`,
 
@@ -34,7 +34,7 @@ module.exports = {
         let text = `🛍 *NEUE BESTELLUNG*\n\n` +
             `📋 Order: /${data.orderId}\n` +
             `👤 Kunde: ${data.username} (ID: ${data.userId})\n` +
-            `💰 Betrag: ${data.total}€\n` +
+            `💰 Betrag: ${data.total}\n` +
             `💳 Methode: ${data.paymentName}\n`;
         if (data.deliveryMethod === 'shipping') text += `🚚 Lieferung: Versand\n`;
         else if (data.deliveryMethod === 'pickup') text += `🏪 Lieferung: Abholung\n`;
@@ -64,11 +64,10 @@ module.exports = {
     getSubcategoryCreated: (name, catName) => `✅ Unterkategorie "${name}" in *${catName}* erstellt!`,
     getPaymentSaved: (name, addr) => `✅ Zahlungsart gespeichert:\n\n*Name:* ${name}\n*Adresse:* ${addr || 'Keine'}\n\nDiese wird Kunden nun beim Checkout angezeigt.`,
     getGeneralError: () => `❌ Hoppla! Ein Fehler ist aufgetreten. Bitte versuche es später erneut.`,
-    
     getCustomerInvoice: (data) => {
         let text = `🧾 *Rechnung / Bestellbestätigung*\n\n`;
         text += `📋 *Order-ID:* \`#${data.orderId}\`\n`;
-        text += `💰 *Offener Betrag:* ${data.total}€\n`;
+        text += `💰 *Offener Betrag:* ${data.total}\n`;
         text += `💳 *Zahlungsart:* ${data.paymentName}\n`;
         if (data.walletAddress) {
             text += `\n📋 *Zahlungsadresse:*\n\`${data.walletAddress}\`\n_(Tippe zum Kopieren)_\n`;
@@ -118,6 +117,7 @@ module.exports = {
         const map = { 'none': '📱 Digital/Kein Versand', 'shipping': '🚚 Versand', 'pickup': '🏪 Abholung', 'both': '🚚🏪 Versand & Abholung' };
         return map[option] || option;
     },
+
     getAdminInfoText: () =>
         `ℹ️ *Admin-Befehle & Funktionen*\n\n` +
         `*/start* – Bot neu starten\n` +
@@ -147,7 +147,6 @@ module.exports = {
     getPingCooldown: () => `⏰ Du kannst nur einmal pro 24 Stunden einen Ping senden.`,
     getContactSent: () => `✅ *Kontaktanfrage gesendet!*\n\nEin Admin wird sich bei dir melden.`,
     getContactPrompt: () => `✍️ *Kontaktanfrage*\n\nBitte beschreibe kurz dein Anliegen (max. 500 Zeichen):`,
-
     getAdminPingNotify: (data) =>
         `🔔 *KUNDEN-PING*\n\n👤 ${data.username}\n📋 /${data.orderId}\n\nDer Kunde wartet auf ein Update!`,
 
@@ -194,12 +193,21 @@ module.exports = {
     getFeedbackThanks: () => 
         `✅ *Vielen Dank!*\n\nDein Feedback wurde erfolgreich übermittelt und wird nach kurzer Prüfung veröffentlicht.`,
 
-    // UPDATE: Header mit Sterne-Durchschnitt und Gesamtanzahl
     getPublicFeedbacksHeader: (average, total) => 
         `⭐ *Kunden-Feedbacks*\n` +
         `📊 Durchschnitt: *${average} / 5.0* (${total} Bewertungen)\n` +
         `➖➖➖➖➖➖➖➖➖➖\n\n`,
 
     getPublicFeedbacksEmpty: () => 
-        `⭐ *Kunden-Feedbacks*\n\nBisher wurden noch keine Feedbacks freigegeben. Werde der Erste!`
+        `⭐ *Kunden-Feedbacks*\n\nBisher wurden noch keine Feedbacks freigegeben. Werde der Erste!`,
+
+    // NEU: Master Menü Texte
+    getMasterShopManagement: () => 
+        `⚙️ *Shop Verwaltung*\n\nHier kannst du die administrativen Bereiche deines Shops, Zahlungsarten und dein Team verwalten.`,
+    
+    getMasterFeedbackManagement: (average, total) => 
+        `⭐ *Feedback Verwaltung*\n\n` +
+        `📊 *Gesamtdurchschnitt:* ${average} / 5.0\n` +
+        `📝 *Freigegebene Feedbacks:* ${total}\n\n` +
+        `Hier kannst du die öffentlichen Bewertungen einsehen oder den Feedback-Verlauf komplett zurücksetzen.`
 };

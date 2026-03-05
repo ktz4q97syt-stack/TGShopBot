@@ -100,10 +100,46 @@ async function hasUserAlreadyFeedbacked(orderId) {
     }
 }
 
+// ==========================================
+// NEU: Lösch-Funktionen für den Master
+// ==========================================
+async function deleteFeedback(feedbackId) {
+    try {
+        const { error } = await supabase
+            .from('feedbacks')
+            .delete()
+            .eq('id', feedbackId);
+
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error deleting feedback:', error.message);
+        return false;
+    }
+}
+
+async function deleteAllFeedbacks() {
+    try {
+        // Löscht alle Einträge (Trick mit ungleicher UUID, damit Supabase den Delete zulässt)
+        const { error } = await supabase
+            .from('feedbacks')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error deleting all feedbacks:', error.message);
+        return false;
+    }
+}
+
 module.exports = {
     saveFeedback,
     getApprovedFeedbacks,
     getFeedbackStats,
     updateFeedbackStatus,
-    hasUserAlreadyFeedbacked
+    hasUserAlreadyFeedbacked,
+    deleteFeedback, // NEU EXPORTIERT
+    deleteAllFeedbacks // NEU EXPORTIERT
 };

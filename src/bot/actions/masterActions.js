@@ -3,6 +3,7 @@ const paymentRepo = require('../../database/repositories/paymentRepo');
 const approvalRepo = require('../../database/repositories/approvalRepo');
 const productRepo = require('../../database/repositories/productRepo');
 const orderRepo = require('../../database/repositories/orderRepo');
+const feedbackRepo = require('../../database/repositories/feedbackRepo'); // NEU
 const uiHelper = require('../../utils/uiHelper');
 const orderHelper = require('../../utils/orderHelper');
 const { isMasterAdmin } = require('../middlewares/auth');
@@ -22,7 +23,6 @@ module.exports = (bot) => {
         }
     });
 
-    // NEU: Handler für den Info-Button im Master-Panel
     bot.action('master_info', isMasterAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -35,6 +35,25 @@ module.exports = (bot) => {
         }
     });
 
+    // NEU: Das Untermenü für die Shop-Verwaltung
+    bot.action('master_shop_management', isMasterAdmin, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        try {
+            const text = texts.getMasterShopManagement();
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '👥 Admins verwalten', callback_data: 'master_manage_admins' }],
+                    [{ text: '✅ Ausstehende Freigaben', callback_data: 'master_pending_approvals' }],
+                    [{ text: '💳 Zahlungsarten verwalten', callback_data: 'master_manage_payments' }],
+                    [{ text: '📝 Begrüßungsnachricht', callback_data: 'master_edit_welcome_msg' }],
+                    [{ text: '⭐ Feedbacks', callback_data: 'master_manage_feedbacks' }],
+                    [{ text: '🔙 Zurück', callback_data: 'master_panel' }]
+                ]
+            };
+            await uiHelper.updateOrSend(ctx, text, keyboard);
+        } catch (error) { console.error('Shop Management Error:', error.message); }
+    });
+
     bot.action('master_manage_payments', isMasterAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -44,7 +63,7 @@ module.exports = (bot) => {
                 callback_data: `master_view_pay_${m.id}`
             }]));
             keyboard.push([{ text: '➕ Zahlungsart hinzufügen', callback_data: 'master_add_payment' }]);
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_panel' }]);
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]); // FIX
             await uiHelper.updateOrSend(ctx, '💳 *Zahlungsarten verwalten*', { inline_keyboard: keyboard });
         } catch (error) { 
             console.error(error.message); 
@@ -89,7 +108,6 @@ module.exports = (bot) => {
             console.error(error.message); 
         }
     });
-
     bot.action('master_customer_overview', isMasterAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -143,12 +161,12 @@ module.exports = (bot) => {
         ctx.answerCbQuery().catch(() => {});
         try {
             const pending = await approvalRepo.getPendingApprovals();
-            if (pending.length === 0) return uiHelper.updateOrSend(ctx, '✅ Keine ausstehenden Freigaben.', { inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'master_panel' }]] });
+            if (pending.length === 0) return uiHelper.updateOrSend(ctx, '✅ Keine ausstehenden Freigaben.', { inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]] });
             const keyboard = pending.map(p => {
                 const icon = p.action_type === 'DELETE' ? '🗑' : '💰';
                 return [{ text: `${icon} Anfrage prüfen`, callback_data: `master_view_appr_${p.id}` }];
             });
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_panel' }]);
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]); // FIX
             await uiHelper.updateOrSend(ctx, '📋 *Ausstehende Anfragen:*', { inline_keyboard: keyboard });
         } catch (error) { console.error(error.message); }
     });
@@ -200,7 +218,6 @@ module.exports = (bot) => {
             return bot.handleUpdate(ctx.update);
         } catch (error) { console.error(error.message); }
     });
-
     bot.action(/^odel_confirm_([\w-]+)$/, isMasterAdmin, async (ctx) => {
         const orderId = ctx.match[1];
         try {
@@ -245,7 +262,7 @@ module.exports = (bot) => {
                 .filter(a => Number(a.telegram_id) !== Number(config.MASTER_ADMIN_ID))
                 .map(a => ([{ text: `❌ ${a.username || a.telegram_id} entlassen`, callback_data: `master_fire_${a.telegram_id}` }]));
             keyboard.push([{ text: '➕ Admin ernennen (ID)', callback_data: 'master_prompt_add_admin' }]);
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_panel' }]);
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]); // FIX
             await uiHelper.updateOrSend(ctx, '👥 *Personalverwaltung*', { inline_keyboard: keyboard });
         } catch (error) { console.error(error.message); }
     });
@@ -271,6 +288,79 @@ module.exports = (bot) => {
         } catch (error) { 
             console.error(error.message); 
         }
+    });
+
+    // ==========================================
+    // NEU: FEEDBACK VERWALTUNG FÜR MASTER
+    // ==========================================
+    bot.action(/^master_manage_feedbacks(?:_(\d+))?$/, isMasterAdmin, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        try {
+            const page = ctx.match && ctx.match[1] ? parseInt(ctx.match[1]) : 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const stats = await feedbackRepo.getFeedbackStats();
+            // Der Master sieht hier die freigegebenen Feedbacks, um sie zu verwalten
+            const { data: feedbacks, count: totalFeedbacks } = await feedbackRepo.getApprovedFeedbacks(limit, offset);
+
+            const text = texts.getMasterFeedbackManagement(stats.average, stats.total);
+            const inline_keyboard = [];
+
+            feedbacks.forEach(fb => {
+                const stars = '⭐'.repeat(fb.rating);
+                const shortComment = fb.comment ? ` - "${fb.comment.substring(0, 15)}..."` : '';
+                const label = `${stars} | ${fb.username}${shortComment}`;
+                inline_keyboard.push([{ text: `❌ Löschen: ${label}`, callback_data: `master_del_fb_${fb.id}` }]);
+            });
+
+            const totalPages = Math.ceil(totalFeedbacks / limit);
+            if (totalPages > 1) {
+                const navRow = [];
+                if (page > 1) navRow.push({ text: '⬅️', callback_data: `master_manage_feedbacks_${page - 1}` });
+                navRow.push({ text: `Seite ${page}/${totalPages}`, callback_data: 'ignore_click' });
+                if (page < totalPages) navRow.push({ text: '➡️', callback_data: `master_manage_feedbacks_${page + 1}` });
+                inline_keyboard.push(navRow);
+            }
+
+            if (totalFeedbacks > 0) {
+                inline_keyboard.push([{ text: '🗑 ALLE Feedbacks löschen', callback_data: 'master_del_all_fb_confirm' }]);
+            }
+            
+            inline_keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]);
+
+            await uiHelper.updateOrSend(ctx, text, { inline_keyboard });
+        } catch (error) { console.error('Manage Feedbacks Error:', error.message); }
+    });
+
+    bot.action(/^master_del_fb_(.+)$/, isMasterAdmin, async (ctx) => {
+        try {
+            const fbId = ctx.match[1];
+            await feedbackRepo.deleteFeedback(fbId); 
+            ctx.answerCbQuery('🗑 Feedback gelöscht.').catch(() => {});
+            ctx.update.callback_query.data = 'master_manage_feedbacks';
+            return bot.handleUpdate(ctx.update);
+        } catch (error) { console.error(error.message); }
+    });
+
+    bot.action('master_del_all_fb_confirm', isMasterAdmin, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        await uiHelper.updateOrSend(ctx, '⚠️ *Möchtest du WIRKLICH alle freigegebenen Feedbacks unwiderruflich löschen?*', {
+            inline_keyboard: [
+                [{ text: '🚨 JA, ALLE LÖSCHEN', callback_data: 'master_del_all_fb_exec' }],
+                [{ text: '❌ Abbrechen', callback_data: 'master_manage_feedbacks' }]
+            ],
+            parse_mode: 'Markdown'
+        });
+    });
+
+    bot.action('master_del_all_fb_exec', isMasterAdmin, async (ctx) => {
+        try {
+            await feedbackRepo.deleteAllFeedbacks(); 
+            ctx.answerCbQuery('🗑 Alle Feedbacks gelöscht.').catch(() => {});
+            ctx.update.callback_query.data = 'master_manage_feedbacks';
+            return bot.handleUpdate(ctx.update);
+        } catch (error) { console.error(error.message); }
     });
 
     bot.on('message', async (ctx, next) => {
