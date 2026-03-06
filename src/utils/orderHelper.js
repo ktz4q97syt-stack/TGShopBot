@@ -38,6 +38,13 @@ async function buildOrderViewPayload(order) {
         });
     }
 
+    if (order.digital_delivery) {
+        text += `\n\n🔐 *Gelieferter Inhalt (Tresor):*\n`;
+        text += `➖➖➖➖➖➖➖➖➖➖\n`;
+        text += order.digital_delivery;
+        text += `\n➖➖➖➖➖➖➖➖➖➖`;
+    }
+
     if (order.details && order.details.length > 0) {
         text += `\n\n*Artikel:*`;
         order.details.forEach(item => {

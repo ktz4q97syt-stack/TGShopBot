@@ -241,6 +241,22 @@ const notifyAdminOrderDeleteRequest = async (data) => {
     } catch (error) { console.error(error.message); }
 };
 
+const notifyAdminReplaceRequest = async (data) => {
+    try {
+        const text = texts.getAdminReplaceRequest(data);
+        const keyboard = { inline_keyboard: [
+            [{ text: '📋 Bestellung prüfen', callback_data: `oview_${data.orderId}` }],
+            [{ text: '👤 Kontaktieren', url: `tg://user?id=${data.userId}` }]
+        ]};
+        const admins = await userRepo.getAllAdmins();
+        const targetIds = new Set(admins.map(a => String(a.telegram_id)));
+        targetIds.add(String(config.MASTER_ADMIN_ID));
+        for (const id of targetIds) {
+            sendTo(id, text, { reply_markup: keyboard });
+        }
+    } catch (error) { console.error('notifyAdminReplaceRequest error:', error.message); }
+};
+
 const notifyAdminsNewProduct = async (data) => {
     try {
         const admins = await userRepo.getAllAdmins();
@@ -258,5 +274,5 @@ module.exports = {
     notifyAdminsInterest, notifyAdminsNewOrder, notifyAdminsTxId, 
     notifyAdminsPing, notifyAdminsContact, notifyMasterBan, sendBroadcast,
     notifyCustomerFeedbackInvite, notifyAdminNewFeedback,
-    notifyAdminOrderDeleteRequest, notifyAdminsNewProduct
+    notifyAdminOrderDeleteRequest, notifyAdminReplaceRequest, notifyAdminsNewProduct
 };

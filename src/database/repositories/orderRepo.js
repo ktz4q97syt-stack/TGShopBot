@@ -218,6 +218,22 @@ const setDigitalDelivery = async (orderId, content) => {
     }
 };
 
+const getOrdersWithDigitalDelivery = async (limit = 10, offset = 0) => {
+    try {
+        const { data, error, count } = await supabase
+            .from('orders')
+            .select(SELECT_FULL, { count: 'exact' })
+            .not('digital_delivery', 'is', null)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+        if (error) throw error;
+        return { data: data || [], count: count || 0 };
+    } catch (error) {
+        console.error('Error getting digital delivery orders:', error.message);
+        return { data: [], count: 0 };
+    }
+};
+
 module.exports = {
     createOrder, getOrderByOrderId, getOrderById,
     updateOrderStatus, updateOrderTxId, addAdminNote,
@@ -225,5 +241,5 @@ module.exports = {
     getOrdersByUser, getActiveOrdersByUser, hasActiveOrders,
     getOpenOrders, getAllOrders,
     addNotificationMsgId, clearNotificationMsgIds,
-    setFeedbackInvited, setDigitalDelivery
+    setFeedbackInvited, setDigitalDelivery, getOrdersWithDigitalDelivery
 };

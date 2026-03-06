@@ -2,7 +2,7 @@ const config = require('../config');
 
 module.exports = {
     getHelpText: () =>
-        `ℹ️ *Hilfe & Informationen*\n\n` +
+        `ℹ️ *Hilfe & Befehle*\n\n` +
         `*Version:* ${config.VERSION}\n\n` +
         `🛍 *Wie kaufe ich hier ein?*\n\n` +
         `1️⃣ *Shop durchsuchen:* Wähle eine Kategorie und ein Produkt.\n` +
@@ -10,6 +10,9 @@ module.exports = {
         `3️⃣ *Bestellung aufgeben:* Gehe zum Warenkorb und wähle die Zahlungsart.\n` +
         `4️⃣ *Bezahlen:* Überweise den Betrag und bestätige mit der TX-ID.\n` +
         `5️⃣ *Warten:* Wir bestätigen den Erhalt umgehend!\n\n` +
+        `📋 *Deine Befehle:*\n` +
+        `*/myorders* – Deine Bestellungen direkt aufrufen\n` +
+        `*/feedbacks* – Shop-Bewertungen anzeigen\n\n` +
         `Bei Fragen wende dich an den Support.`,
 
     getWelcomeText: (isMaster, role) => {
@@ -121,6 +124,19 @@ module.exports = {
         return map[option] || option;
     },
 
+    // --- v0.5.6: Einzel-Bestellübersicht & Tresor ---
+    getCustomerOrderDetailHeader: (orderId) => `📋 *Bestellung #${orderId}*`,
+    getTresorEmpty: () => `🔐 *Deliverables Tresor*\n\nFür diese Bestellung wurden noch keine digitalen Artikel geliefert.`,
+    getReplaceRequestSent: (orderId) =>
+        `🔄 *Replace-Anfrage gesendet!*\n\n` +
+        `Bestellung \`#${orderId}\`\n\nDeine Anfrage wurde an das Team weitergeleitet. Wir melden uns baldmöglichst.`,
+    getAdminReplaceRequest: (data) =>
+        `🔄 *REPLACE-ANFRAGE*\n\n` +
+        `👤 Kunde: ${data.username} (ID: ${data.userId})\n` +
+        `📋 Order: \`#${data.orderId}\`\n\n` +
+        `Der Kunde möchte einen Ersatz für seine digitalen Artikel. Bitte Bestellung prüfen.`,
+    getMasterDeliveredOrdersHeader: () => `🔐 *Master – Deliverables Tresor*\n\nBestellungen mit digitaler Lieferung:`,
+
     getAdminInfoText: () =>
         `ℹ️ *Admin-Befehle & Funktionen*\n\n` +
         `*/start* – Bot neu starten\n` +
@@ -150,7 +166,14 @@ module.exports = {
     getPingCooldown: () => `⏰ Du kannst nur einmal pro 24 Stunden einen Ping senden.`,
     getContactSent: () => `✅ *Kontaktanfrage gesendet!*\n\nEin Admin wird sich bei dir melden.`,
     getContactPrompt: () => `✍️ *Kontaktanfrage*\n\nBitte beschreibe kurz dein Anliegen (max. 500 Zeichen):`,
-    
+    getContactCooldown: () => `⏰ Du kannst nur einmal pro Stunde eine Kontaktanfrage senden.`,
+
+    getBannedMessage: () => `🚫 *Du wurdest gesperrt.*\n\nDein Zugang zu diesem Shop wurde deaktiviert.`,
+    getBanSelfError: () => `❌ Du kannst dich nicht selbst sperren.`,
+    getBanMasterError: () => `❌ Der Master-Admin kann nicht gesperrt werden.`,
+    getBanAlreadyBanned: () => `⚠️ Dieser User ist bereits gesperrt.`,
+    getBanConfirmation: (userId) => `✅ User \`${userId}\` wurde gesperrt und benachrichtigt.`,
+
     getAdminPingNotify: (data) =>
         `🔔 *KUNDEN-PING*\n\n👤 ${data.username}\n📋 /${data.orderId}\n\nDer Kunde wartet auf ein Update!`,
 

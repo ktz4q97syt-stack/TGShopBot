@@ -368,4 +368,77 @@ module.exports = (bot) => {
         ctx.session.awaitingAdminId = false;
         await ctx.reply(`✅ Nutzer ${targetId} ist nun Admin.`);
     });
+    // ─── MASTER: DELIVERABLES TRESOR ─────────────────────────────────────────
+    bot.action(/^master_deliverables_tresor(?:_(\d+))?$/, isMasterAdmin, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        try {
+            const page = ctx.match && ctx.match[1] ? parseInt(ctx.match[1]) : 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const { data: orders, count: total } = await orderRepo.getOrdersWithDigitalDelivery(limit, offset);
+
+            if (!orders || orders.length === 0) {
+                return uiHelper.updateOrSend(ctx, texts.getMasterDeliveredOrdersHeader() + '\n\nKeine Bestellungen mit digitaler Lieferung gefunden.', {
+                    inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'master_panel' }]]
+                });
+            }
+
+            let text = texts.getMasterDeliveredOrdersHeader() + '\n\n';
+            const keyboard = [];
+
+            orders.forEach(order => {
+                const date = new Date(order.created_at).toLocaleDateString('de-DE');
+                text += `📋 \`#${order.order_id}\` | ID: ${order.user_id} | ${date}\n`;
+                keyboard.push([{ text: `🔐 #${order.order_id} – Tresor öffnen`, callback_data: `master_tresor_view_${order.order_id}` }]);
+            });
+
+            const totalPages = Math.ceil((total || 0) / limit);
+            const navRow = [];
+            if (page > 1) navRow.push({ text: '⬅️', callback_data: `master_deliverables_tresor_${page - 1}` });
+            if (totalPages > 1) navRow.push({ text: `${page}/${totalPages}`, callback_data: 'noop' });
+            if (page < totalPages) navRow.push({ text: '➡️', callback_data: `master_deliverables_tresor_${page + 1}` });
+            if (navRow.length > 0) keyboard.push(navRow);
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_panel' }]);
+
+            await uiHelper.updateOrSend(ctx, text, { inline_keyboard: keyboard });
+        } catch (error) {
+            console.error('Master Tresor Error:', error.message);
+        }
+    });
+
+    bot.action(/^master_tresor_view_(.+)$/, isMasterAdmin, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        try {
+            const orderId = ctx.match[1];
+            const order = await orderRepo.getOrderByOrderId(orderId);
+            if (!order) return ctx.answerCbQuery('Bestellung nicht gefunden.', { show_alert: true });
+
+            const date = new Date(order.created_at).toLocaleDateString('de-DE');
+            let text = `🔐 *Deliverables Tresor*\n\n`;
+            text += `📋 Bestellung: \`#${orderId}\`\n`;
+            text += `👤 Kunden-ID: ${order.user_id}\n`;
+            text += `📅 Datum: ${date}\n\n`;
+            text += `📦 *Gelieferter Inhalt:*\n`;
+            text += `➖➖➖➖➖➖➖➖➖➖\n`;
+            text += order.digital_delivery || '_Kein Inhalt_';
+            text += `\n➖➖➖➖➖➖➖➖➖➖`;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '📋 Bestellung öffnen (Admin)', callback_data: `oview_${orderId}` }],
+                    [{ text: '👤 Kunden kontaktieren', url: `tg://user?id=${order.user_id}` }],
+                    [{ text: '🔙 Zurück zum Tresor', callback_data: 'master_deliverables_tresor' }]
+                ]
+            };
+
+            await uiHelper.updateOrSend(ctx, text, keyboard);
+        } catch (error) {
+            console.error('Master Tresor View Error:', error.message);
+        }
+    });
+
+    bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {}));
+
+
 };

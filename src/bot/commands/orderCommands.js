@@ -10,6 +10,82 @@ const notificationService = require('../../services/notificationService');
 
 module.exports = (bot) => {
 
+    // ─── KUNDEN-BEFEHLE (/myorders, /feedbacks) ───────────────────────────────
+    bot.command('myorders', async (ctx) => {
+        try {
+            const userId = ctx.from.id;
+            // Simuliere den my_orders callback
+            const fakeCtx = Object.assign({}, ctx, {
+                answerCbQuery: () => Promise.resolve(),
+                editMessageText: () => Promise.reject(new Error('no message to edit')),
+                reply: ctx.reply.bind(ctx),
+                from: ctx.from,
+                session: ctx.session || {}
+            });
+            // Direkt die Bestellungen anzeigen
+            const orderRepo = require('../../database/repositories/orderRepo');
+            const texts = require('../../utils/texts');
+            const formatters = require('../../utils/formatters');
+            const orders = await orderRepo.getActiveOrdersByUser(userId);
+            if (!orders || orders.length === 0) {
+                return ctx.reply(texts.getMyOrdersEmpty(), {
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: [[{ text: '🛍 Zum Shop', callback_data: 'shop_menu' }]] }
+                });
+            }
+            let text = texts.getMyOrdersHeader() + '\n\n';
+            const keyboard = [];
+            orders.forEach((order, i) => {
+                const date = new Date(order.created_at).toLocaleDateString('de-DE');
+                const statusLabel = texts.getCustomerStatusLabel(order.status);
+                text += `${i + 1}. \`#${order.order_id}\`\n`;
+                text += `💰 ${formatters.formatPrice(order.total_amount)} | ${statusLabel}\n`;
+                if (order.digital_delivery) text += `🔐 _Digitale Lieferung verfügbar_\n`;
+                text += `📅 ${date}\n\n`;
+                if (order.status === 'offen' && !order.tx_id) {
+                    keyboard.push([{ text: `💸 Zahlen: ${order.order_id}`, callback_data: `confirm_pay_${order.order_id}` }]);
+                }
+                keyboard.push([{ text: `📋 Bestellung #${order.order_id}`, callback_data: `cust_order_detail_${order.order_id}` }]);
+            });
+            keyboard.push([{ text: '🔙 Hauptmenü', callback_data: 'back_to_main' }]);
+            await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+        } catch (error) {
+            console.error('myorders command error:', error.message);
+            ctx.reply('❌ Fehler beim Laden deiner Bestellungen.');
+        }
+    });
+
+    bot.command('feedbacks', async (ctx) => {
+        try {
+            const feedbackRepo = require('../../database/repositories/feedbackRepo');
+            const texts = require('../../utils/texts');
+            const limit = 10;
+            const stats = await feedbackRepo.getFeedbackStats();
+            const { data: feedbacks, count: totalFeedbacks } = await feedbackRepo.getApprovedFeedbacks(limit, 0);
+            let text = '';
+            const inline_keyboard = [];
+            if (!feedbacks || feedbacks.length === 0) {
+                text = texts.getPublicFeedbacksEmpty();
+            } else {
+                text = texts.getPublicFeedbacksHeader(stats.average, stats.total);
+                feedbacks.forEach(fb => {
+                    text += `${'⭐'.repeat(fb.rating)} - *${fb.username}*\n${fb.comment ? `_"${fb.comment}"_` : ''}\n\n`;
+                });
+                const totalPages = Math.ceil(totalFeedbacks / limit);
+                if (totalPages > 1) {
+                    inline_keyboard.push([{ text: '➡️ Mehr', callback_data: 'view_feedbacks_2' }]);
+                }
+            }
+            inline_keyboard.push([{ text: '🔙 Hauptmenü', callback_data: 'back_to_main' }]);
+            await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard } });
+        } catch (error) {
+            console.error('feedbacks command error:', error.message);
+            ctx.reply('❌ Fehler beim Laden der Feedbacks.');
+        }
+    });
+
+
+
     // GEFIXT: Reagiert jetzt nur noch auf echte Order-IDs, nicht mehr auf ähnliche Wörter!
     bot.hears(/^\/(order[a-zA-Z0-9]+)$/i, isAdmin, async (ctx) => {
         try {

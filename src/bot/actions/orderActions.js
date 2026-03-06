@@ -14,65 +14,6 @@ const FINAL_STATUSES = ['abgeschlossen', 'abgebrochen', 'loeschung_angefragt'];
 
 module.exports = (bot) => {
 
-    bot.action('my_orders', async (ctx) => {
-        ctx.answerCbQuery().catch(() => {});
-        try {
-            const userId = ctx.from.id;
-            const orders = await orderRepo.getActiveOrdersByUser(userId);
-
-            if (!orders || orders.length === 0) {
-                const emptyText = texts.getMyOrdersEmpty();
-                const kb = { inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'back_to_main' }]] };
-                return await ctx.editMessageText(emptyText, { parse_mode: 'Markdown', reply_markup: kb }).catch(async () => {
-                    await ctx.reply(emptyText, { parse_mode: 'Markdown', reply_markup: kb });
-                });
-            }
-
-            let text = texts.getMyOrdersHeader() + '\n\n';
-            const keyboard = [];
-
-            orders.forEach((order, i) => {
-                const date = new Date(order.created_at).toLocaleDateString('de-DE');
-                const statusLabel = texts.getCustomerStatusLabel(order.status);
-                text += `${i + 1}. \`#${order.order_id}\`\n`;
-                text += `💰 ${formatters.formatPrice(order.total_amount)} | ${statusLabel}\n`;
-                if (order.delivery_method === 'shipping') text += `🚚 Versand\n`;
-                else if (order.delivery_method === 'pickup') text += `🏪 Abholung\n`;
-                if (order.tx_id) text += `🔑 TX: \`${order.tx_id}\`\n`;
-                text += `📅 ${date}\n\n`;
-
-                if (order.status === 'offen' && !order.tx_id) {
-                    keyboard.push([{ text: `💸 Zahlen: ${order.order_id}`, callback_data: `confirm_pay_${order.order_id}` }]);
-                }
-
-                keyboard.push([
-                    { text: `🔔 Ping: ${order.order_id}`, callback_data: `cust_ping_${order.order_id}` },
-                    { text: `💬 Kontakt`, callback_data: `cust_contact_${order.order_id}` }
-                ]);
-            });
-
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'back_to_main' }]);
-            await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }).catch(async () => {
-                await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
-            });
-        } catch (error) {
-            console.error('My Orders Error:', error.message);
-        }
-    });
-
-    bot.action(/^confirm_pay_(.+)$/, async (ctx) => {
-        ctx.answerCbQuery().catch(() => {});
-        try {
-            const orderId = ctx.match[1];
-            if (!ctx.session) ctx.session = {};
-            ctx.session.awaitingTxId = orderId;
-            await ctx.reply(texts.getTxIdPrompt(), {
-                parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: [[{ text: '❌ Abbrechen', callback_data: 'cancel_txid' }]] }
-            });
-        } catch (error) { console.error('Confirm Pay Error:', error.message); }
-    });
-
     bot.action('admin_open_orders', isAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -293,7 +234,13 @@ module.exports = (bot) => {
                 await orderHelper.clearOldNotifications(ctx, order);
                 const formattedContent = input.split(',').map(item => `▪️ ${item.trim()}`).join('\n');
                 const customerMessage = texts.getDigitalDeliveryCustomerMessage(orderId, formattedContent);
-                const sentMsg = await bot.telegram.sendMessage(order.user_id, customerMessage, { parse_mode: 'Markdown' }).catch(() => null);
+                // Permanente Liefernachricht mit Tresor-Zugang (kein Lösch-Button)
+                const tresorKeyboard = {
+                    inline_keyboard: [[
+                        { text: '🔐 Deliverables Tresor', callback_data: `cust_tresor_${orderId}` }
+                    ]]
+                };
+                const sentMsg = await bot.telegram.sendMessage(order.user_id, customerMessage, { parse_mode: 'Markdown', reply_markup: tresorKeyboard }).catch(() => null);
                 
                 if (sentMsg) {
                     await orderRepo.setDigitalDelivery(orderId, formattedContent);

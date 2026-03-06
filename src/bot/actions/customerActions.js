@@ -4,9 +4,11 @@ const feedbackRepo = require('../../database/repositories/feedbackRepo');
 const texts = require('../../utils/texts');
 const formatters = require('../../utils/formatters');
 const notificationService = require('../../services/notificationService');
+const config = require('../../config');
 
 module.exports = (bot) => {
-    // --- 1. BESTELLÜBERSICHT ---
+
+    // ─── 1. MEINE BESTELLUNGEN (ÜBERSICHT) ───────────────────────────────────
     bot.action('my_orders', async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -27,32 +29,19 @@ module.exports = (bot) => {
             orders.forEach((order, i) => {
                 const date = new Date(order.created_at).toLocaleDateString('de-DE');
                 const statusLabel = texts.getCustomerStatusLabel(order.status);
-                
+
                 text += `${i + 1}. \`#${order.order_id}\`\n`;
                 text += `💰 ${formatters.formatPrice(order.total_amount)} | ${statusLabel}\n`;
-                
                 if (order.digital_delivery) {
-                    text += texts.getDigitalDeliveryOverviewHint() + '\n';
+                    text += `🔐 _Digitale Lieferung verfügbar_\n`;
                 }
-                
                 text += `📅 ${date}\n\n`;
 
                 if (order.status === 'offen' && !order.tx_id) {
                     keyboard.push([{ text: `💸 Zahlen: ${order.order_id}`, callback_data: `confirm_pay_${order.order_id}` }]);
                 }
 
-                if (order.digital_delivery) {
-                    keyboard.push([{ text: texts.getDigitalDeliveryOverviewButton(), callback_data: `view_dig_del_${order.order_id}` }]);
-                }
-
-                if (order.status === 'abgeschlossen') {
-                    keyboard.push([{ text: `🗑 Löschen: ${order.order_id}`, callback_data: `cust_del_order_${order.order_id}` }]);
-                }
-
-                keyboard.push([
-                    { text: `🔔 Ping: ${order.order_id}`, callback_data: `cust_ping_${order.order_id}` },
-                    { text: `💬 Kontakt`, callback_data: `cust_contact_${order.order_id}` }
-                ]);
+                keyboard.push([{ text: `📋 Bestellung #${order.order_id}`, callback_data: `cust_order_detail_${order.order_id}` }]);
             });
 
             keyboard.push([{ text: '🔙 Zurück', callback_data: 'back_to_main' }]);
@@ -64,35 +53,158 @@ module.exports = (bot) => {
         }
     });
 
-    // --- 2. DIGITALER TRESOR & LÖSCH-LOGIK ---
-    bot.action('del_delivery_msg', async (ctx) => {
+    // ─── 2. EINZEL-BESTELLÜBERSICHT FÜR KUNDEN ───────────────────────────────
+    bot.action(/^cust_order_detail_(.+)$/, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
         try {
-            await ctx.deleteMessage().catch(() => {});
-            ctx.answerCbQuery('✅ Nachricht gelöscht.').catch(() => {});
-        } catch (error) {}
+            const orderId = ctx.match[1];
+            const userId = ctx.from.id;
+            const order = await orderRepo.getOrderByOrderId(orderId);
+
+            if (!order || order.user_id !== userId) {
+                return ctx.answerCbQuery('⚠️ Bestellung nicht gefunden.', { show_alert: true });
+            }
+
+            const date = new Date(order.created_at).toLocaleDateString('de-DE');
+            const statusLabel = texts.getCustomerStatusLabel(order.status);
+
+            let text = `📋 *Bestellung #${order.order_id}*\n\n`;
+            text += `📅 Datum: ${date}\n`;
+            text += `💰 Betrag: ${formatters.formatPrice(order.total_amount)}\n`;
+            text += `💳 Zahlung: ${order.payment_method_name || 'N/A'}\n`;
+            text += `📦 Status: ${statusLabel}\n`;
+
+            if (order.delivery_method === 'shipping') text += `🚚 Lieferung: Versand\n`;
+            else if (order.delivery_method === 'pickup') text += `🏪 Lieferung: Abholung\n`;
+            else text += `📱 Lieferung: Digital\n`;
+
+            if (order.tx_id) text += `🔑 TX-ID: \`${order.tx_id}\`\n`;
+
+            if (order.details && order.details.length > 0) {
+                text += `\n*Artikel:*`;
+                order.details.forEach(item => {
+                    const path = item.category_path ? `_${item.category_path}_ » ` : '';
+                    text += `\n▪️ ${item.quantity}x ${path}${item.name} = ${formatters.formatPrice(item.total)}`;
+                });
+            }
+
+            const keyboard = [];
+
+            if (order.digital_delivery) {
+                keyboard.push([{ text: '🔐 Deliverables Tresor', callback_data: `cust_tresor_${orderId}` }]);
+                keyboard.push([{ text: '🔄 Replace anfragen', callback_data: `cust_replace_${orderId}` }]);
+            }
+
+            if (order.status === 'abgeschlossen') {
+                keyboard.push([{ text: '🗑 Bestellung löschen', callback_data: `cust_del_order_${orderId}` }]);
+            }
+
+            keyboard.push([
+                { text: '🔔 Ping senden', callback_data: `cust_ping_${orderId}` },
+                { text: '💬 Kontakt', callback_data: `cust_contact_${orderId}` }
+            ]);
+
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'my_orders' }]);
+
+            await ctx.editMessageText(text, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: keyboard }
+            }).catch(async () => {
+                await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+            });
+        } catch (error) {
+            console.error('Customer Order Detail Error:', error.message);
+        }
     });
 
+    // ─── 3. DELIVERABLES TRESOR ──────────────────────────────────────────────
+    bot.action(/^cust_tresor_(.+)$/, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        try {
+            const orderId = ctx.match[1];
+            const userId = ctx.from.id;
+            const order = await orderRepo.getOrderByOrderId(orderId);
+
+            if (!order || order.user_id !== userId) {
+                return ctx.answerCbQuery('⚠️ Bestellung nicht gefunden.', { show_alert: true });
+            }
+
+            if (!order.digital_delivery) {
+                return ctx.answerCbQuery('Noch keine digitalen Artikel geliefert.', { show_alert: true });
+            }
+
+            const msgText = texts.getDigitalDeliveryCustomerMessage(orderId, order.digital_delivery);
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '🔙 Zur Bestellung', callback_data: `cust_order_detail_${orderId}` }]
+                ]
+            };
+
+            // Permanente Nachricht – kein Lösch-Button, bleibt im Chat
+            await ctx.reply(msgText, { parse_mode: 'Markdown', reply_markup: keyboard });
+
+        } catch (error) {
+            console.error('Tresor Error:', error.message);
+            ctx.answerCbQuery('Fehler beim Laden.', { show_alert: true }).catch(() => {});
+        }
+    });
+
+    // ─── 4. REPLACE ANFRAGEN ─────────────────────────────────────────────────
+    bot.action(/^cust_replace_(.+)$/, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
+        try {
+            const orderId = ctx.match[1];
+            const userId = ctx.from.id;
+            const order = await orderRepo.getOrderByOrderId(orderId);
+
+            if (!order || order.user_id !== userId) {
+                return ctx.answerCbQuery('⚠️ Bestellung nicht gefunden.', { show_alert: true });
+            }
+
+            const username = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || `ID: ${userId}`);
+
+            notificationService.notifyAdminReplaceRequest({
+                orderId,
+                userId,
+                username
+            }).catch(() => {});
+
+            await ctx.reply(texts.getReplaceRequestSent(orderId), {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [[{ text: '📋 Zur Bestellung', callback_data: `cust_order_detail_${orderId}` }]]
+                }
+            });
+        } catch (error) {
+            console.error('Replace Request Error:', error.message);
+        }
+    });
+
+    // ─── 5. DIGITALE LIEFERUNG LEGACY (view_dig_del_) ────────────────────────
     bot.action(/^view_dig_del_(.+)$/, async (ctx) => {
+        ctx.answerCbQuery().catch(() => {});
         try {
             const orderId = ctx.match[1];
             const order = await orderRepo.getOrderByOrderId(orderId);
             if (!order || !order.digital_delivery) return ctx.answerCbQuery('⚠️ Keine Keys gefunden.', { show_alert: true });
-            
-            ctx.answerCbQuery().catch(() => {});
-            const customerKb = { inline_keyboard: [[{ text: texts.getDigitalDeliverySavedButton(), callback_data: 'del_delivery_msg' }]] };
+
+            const keyboard = {
+                inline_keyboard: [[{ text: '🔙 Zur Bestellung', callback_data: `cust_order_detail_${orderId}` }]]
+            };
             const msgText = texts.getDigitalDeliveryCustomerMessage(orderId, order.digital_delivery);
-            await ctx.reply(msgText, { parse_mode: 'Markdown', reply_markup: customerKb });
+            await ctx.reply(msgText, { parse_mode: 'Markdown', reply_markup: keyboard });
         } catch (error) {
             ctx.answerCbQuery('Fehler beim Laden.', { show_alert: true }).catch(() => {});
         }
     });
 
+    // ─── 6. BESTELLUNG LÖSCHEN ───────────────────────────────────────────────
     bot.action(/^cust_del_order_(.+)$/, async (ctx) => {
         try {
             const orderId = ctx.match[1];
             await orderRepo.updateOrderStatus(orderId, 'loeschung_angefragt');
             const username = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
-            
+
             if (notificationService.notifyAdminOrderDeleteRequest) {
                 notificationService.notifyAdminOrderDeleteRequest({ orderId, userId: ctx.from.id, username }).catch(() => {});
             }
@@ -105,7 +217,7 @@ module.exports = (bot) => {
         }
     });
 
-    // --- 3. ZAHLUNGS-LOGIK (TX-ID) ---
+    // ─── 7. ZAHLUNGS-LOGIK (TX-ID) ───────────────────────────────────────────
     bot.action(/^confirm_pay_(.+)$/, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -127,14 +239,14 @@ module.exports = (bot) => {
         });
     });
 
-    // --- 4. SUPPORT-FUNKTIONEN (PING & KONTAKT) ---
+    // ─── 8. SUPPORT (PING & KONTAKT) ─────────────────────────────────────────
     bot.action(/^cust_ping_(.+)$/, async (ctx) => {
         try {
             const orderId = ctx.match[1];
             const userId = ctx.from.id;
             const canPing = await userRepo.canPing(userId);
             if (!canPing) return ctx.answerCbQuery(texts.getPingCooldown().replace('⏰ ', ''), { show_alert: true });
-            
+
             await userRepo.setPingTimestamp(userId);
             notificationService.notifyAdminsPing({ userId, username: ctx.from.username || 'Kunde', orderId }).catch(() => {});
             ctx.answerCbQuery('✅ Ping gesendet!').catch(() => {});
@@ -151,7 +263,7 @@ module.exports = (bot) => {
         } catch (error) { console.error('Contact Error:', error.message); }
     });
 
-    // --- 5. FEEDBACK-SYSTEM (MIT PAGINIERUNG) ---
+    // ─── 9. FEEDBACK-SYSTEM (MIT PAGINIERUNG) ────────────────────────────────
     bot.action(/^view_feedbacks(?:_(\d+))?$/, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -161,10 +273,10 @@ module.exports = (bot) => {
 
             const stats = await feedbackRepo.getFeedbackStats();
             const { data: feedbacks, count: totalFeedbacks } = await feedbackRepo.getApprovedFeedbacks(limit, offset);
-            
+
             let text = '';
             const inline_keyboard = [];
-            
+
             if (!feedbacks || feedbacks.length === 0) {
                 text = texts.getPublicFeedbacksEmpty();
             } else {
@@ -197,7 +309,7 @@ module.exports = (bot) => {
         try { await ctx.scene.enter('feedbackScene', { orderId: ctx.match[1] }); } catch (error) {}
     });
 
-    // --- 6. MESSAGE HANDLER (TX-ID SAMMLER) ---
+    // ─── 10. MESSAGE HANDLER (TX-ID SAMMLER) ─────────────────────────────────
     bot.on('message', async (ctx, next) => {
         if (!ctx.session || !ctx.message || !ctx.message.text) return next();
         const input = ctx.message.text.trim();

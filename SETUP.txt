@@ -2,7 +2,7 @@
       t.me/autoacts - Shop Bot Setup
 =========================================
 Autor: t.me/autoacts
-Version: 0.5.0
+Version: 0.5.6
 
 Diese Anleitung führt dich durch die komplette Neuinstallation 
 des Shop Bots von Null auf Hundert.
@@ -385,3 +385,27 @@ BEGIN
         RAISE NOTICE '══════════════════════════════════════';
     END IF;
 END $$;
+
+─────────────────────────────────────────
+  NEU IN v0.5.6 – Deliverables Tresor
+─────────────────────────────────────────
+
+NEUE KUNDENBEFEHLE:
+  /myorders   → Öffnet direkt die Bestellübersicht des Kunden
+  /feedbacks  → Zeigt die öffentlichen Shop-Bewertungen an
+
+NEUE KUNDENFEATURES:
+  • Einzel-Bestellübersicht: Jede Bestellung hat eine eigene
+    Detailseite (Ping & Kontakt sind dort integriert)
+  • Deliverables Tresor: Digitale Lieferungen bleiben dauerhaft
+    über den Tresor-Button in der Bestellübersicht abrufbar
+  • Replace anfragen: Kunden können Ersatz für digitale Artikel
+    direkt in der Bestellübersicht anfordern
+
+NEUE MASTER-FEATURES:
+  • Deliverables Tresor im Master-Menü: Alle Bestellungen mit
+    digitaler Lieferung gesammelt einsehbar und verwaltbar
+
+KEINE DATENBANKÄNDERUNGEN NOTWENDIG:
+  Dieses Update nutzt ausschließlich bestehende Tabellenspalten.
+

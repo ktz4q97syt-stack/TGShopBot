@@ -1,8 +1,20 @@
-# 🤖 t.me/autoacts – Shop Bot Core | v0.5.0
+# 🤖 t.me/autoacts – Shop Bot Core | v0.5.6
 
 [span_0](start_span)Ein professionelles Telegram-E-Commerce-System mit hierarchischer Rechteverwaltung, flexiblem Liefersystem, manuellem Zahlungsflow und dezentraler Datenstruktur.[span_0](end_span) [span_1](start_span)Entwickelt von t.me/autoacts.[span_1](end_span)
 
 ---
+
+## 🆕 Changelog v0.5.6 – Deliverables Tresor & Einzel-Bestellübersicht
+
+- **🔐 Deliverables Tresor:** Kunden können jederzeit auf ihre gelieferten digitalen Artikel zugreifen – auch nachträglich über die Einzel-Bestellübersicht.
+- **📋 Einzel-Bestellübersicht:** Jede Bestellung hat eine eigene Detailansicht für Kunden. Ping & Kontakt sind dorthin verschoben.
+- **🔄 Replace anfragen:** Kunden können direkt in der Bestellübersicht einen Ersatz für gelieferte digitale Artikel anfragen. Admin & Master werden benachrichtigt.
+- **📦 Permanente Liefernachrichten:** Gelieferte digitale Artikel bleiben dauerhaft im Kundenchat sichtbar (kein Lösch-Button mehr).
+- **🔐 Master Tresor:** Der Master hat Zugriff auf alle gelieferten digitalen Artikel über den neuen "Deliverables Tresor" im Master-Menü.
+- **⚙️ Admin Tresor-Einsicht:** In der Admin-Bestellübersicht wird der gelieferte Inhalt direkt angezeigt.
+- **📱 /myorders Befehl:** Kunden können direkt mit `/myorders` ihre Bestellungen aufrufen.
+- **/feedbacks Befehl:** Kunden können direkt mit `/feedbacks` die Shop-Bewertungen aufrufen.
+- **ℹ️ Info & Befehle:** Neue Kundenbefehle sind im Hilfe-Menü dokumentiert.
 
 ## 🆕 Changelog v0.5.0 – Feedback-System & Command-Refactoring
 - **⭐ Neues Feedback-System:** Kunden können qualifizierte Bestellungen mit Sternen (1-5) und einem Kommentar bewerten.
