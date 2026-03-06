@@ -98,7 +98,7 @@ module.exports = {
             'versand': '📦 Versendet',
             'abgeschlossen': '✅ Abgeschlossen',
             'abgebrochen': '❌ Abgebrochen',
-            'loeschung_angefragt': '🗑 Löschung angefragt' // NEU
+            'loeschung_angefragt': '🗑 Löschung angefragt'
         };
         return map[status] || status;
     },
@@ -111,7 +111,7 @@ module.exports = {
             'versand': '📦 Versendet',
             'abgeschlossen': '✅ Abgeschlossen',
             'abgebrochen': '❌ Abgebrochen',
-            'loeschung_angefragt': '🗑 Wird geprüft' // NEU
+            'loeschung_angefragt': '🗑 Wird geprüft'
         };
         return map[status] || status;
     },
@@ -218,5 +218,38 @@ module.exports = {
         `🗑 *LÖSCHANFRAGE VOM KUNDEN*\n\n` +
         `👤 Kunde: ${data.username} (ID: ${data.userId})\n` +
         `📋 Order: \`#${data.orderId}\`\n\n` +
-        `Der Kunde möchte diese abgeschlossene Bestellung aus dem System löschen. Bitte prüfen und entscheiden.`
+        `Der Kunde möchte diese abgeschlossene Bestellung aus dem System löschen. Bitte prüfen und entscheiden.`,
+
+    getAdminCategoryManageHeader: () => `📁 *Kategorien verwalten*`,
+    
+    getAdminCategoryDetails: (name, subcatCount) => {
+        let text = `Kategorie: *${name}*`;
+        if (subcatCount > 0) text += `\n📂 ${subcatCount} Unterkategorie(n)`;
+        return text;
+    },
+
+    getAdminSubcategoryDetails: (name) => `📂 Unterkategorie: *${name}*`,
+
+    getAdminProductManageHeader: () => `📦 *Produkte verwalten*\n\nWähle eine Kategorie:`,
+    
+    getAdminProductSelectSubcat: () => `Wähle eine Unterkategorie oder ein Produkt:`,
+    
+    getAdminProductSubcatHeader: (name) => `📂 *${name}*\n\nWähle ein Produkt:`,
+
+    getAdminProductDetails: (product, path, deliveryLabel, formattedPrice) => {
+        let text = `*${product.name}*\n`;
+        text += `📂 _In: ${path}_\n\n`;
+        text += `💰 Preis: ${formattedPrice}\n`;
+        text += `📦 Aktiv: ${product.is_active ? '✅' : '❌'}\n`;
+        text += `📋 Verfügbar: ${product.is_out_of_stock ? '❌ Ausverkauft' : '✅'}\n`;
+        text += `🚚 Lieferoption: ${deliveryLabel}\n`;
+        if (product.description) text += `\n📝 ${product.description}`;
+        return text;
+    },
+
+    getAdminImageLoadError: () => `\n\n⚠️ _Bild konnte nicht geladen werden_`,
+    
+    getAdminPricePrompt: () => `💰 *Neuen Preis eingeben:*\n\nBitte sende den neuen Preis (z.B. \`12.50\`):`,
+    
+    getAdminDeleteRequestSent: (name) => `🔔 Löschanfrage für *${name}* wurde an den Master gesendet.`
 };

@@ -37,7 +37,6 @@ module.exports = (bot) => {
                     keyboard.push([{ text: `💸 Zahlen: ${order.order_id}`, callback_data: `confirm_pay_${order.order_id}` }]);
                 }
 
-                // NEU: Löschen-Button für abgeschlossene Bestellungen
                 if (order.status === 'abgeschlossen') {
                     keyboard.push([{ text: `🗑 Löschen: ${order.order_id}`, callback_data: `cust_del_order_${order.order_id}` }]);
                 }
@@ -57,17 +56,14 @@ module.exports = (bot) => {
         }
     });
 
-    // NEU: Handler für den Löschen-Button des Kunden
     bot.action(/^cust_del_order_(.+)$/, async (ctx) => {
         try {
             const orderId = ctx.match[1];
             
-            // Status auf "Löschung angefragt" setzen, damit sie beim Kunden direkt verschwindet
             await orderRepo.updateOrderStatus(orderId, 'loeschung_angefragt');
             
             const username = ctx.from.username ? `@${ctx.from.username}` : (ctx.from.first_name || 'Kunde');
             
-            // Benachrichtigung an Admin senden (bauen wir im nächsten Schritt)
             if (notificationService.notifyAdminOrderDeleteRequest) {
                 notificationService.notifyAdminOrderDeleteRequest({
                     orderId,
@@ -79,7 +75,6 @@ module.exports = (bot) => {
             ctx.answerCbQuery('🗑 Bestellung aus der Übersicht entfernt.').catch(() => {});
             await ctx.reply('ℹ️ Deine Bestellung wurde aus deiner Übersicht entfernt. Ein Admin wird die endgültige Löschung aus dem System prüfen.');
 
-            // Meine Bestellungen neu laden
             ctx.update.callback_query.data = 'my_orders';
             return bot.handleUpdate(ctx.update);
         } catch (error) {

@@ -3,7 +3,7 @@ const paymentRepo = require('../../database/repositories/paymentRepo');
 const approvalRepo = require('../../database/repositories/approvalRepo');
 const productRepo = require('../../database/repositories/productRepo');
 const orderRepo = require('../../database/repositories/orderRepo');
-const feedbackRepo = require('../../database/repositories/feedbackRepo'); // NEU
+const feedbackRepo = require('../../database/repositories/feedbackRepo');
 const uiHelper = require('../../utils/uiHelper');
 const orderHelper = require('../../utils/orderHelper');
 const { isMasterAdmin } = require('../middlewares/auth');
@@ -35,7 +35,6 @@ module.exports = (bot) => {
         }
     });
 
-    // NEU: Das Untermenü für die Shop-Verwaltung
     bot.action('master_shop_management', isMasterAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -63,7 +62,7 @@ module.exports = (bot) => {
                 callback_data: `master_view_pay_${m.id}`
             }]));
             keyboard.push([{ text: '➕ Zahlungsart hinzufügen', callback_data: 'master_add_payment' }]);
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]); // FIX
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]);
             await uiHelper.updateOrSend(ctx, '💳 *Zahlungsarten verwalten*', { inline_keyboard: keyboard });
         } catch (error) { 
             console.error(error.message); 
@@ -108,6 +107,7 @@ module.exports = (bot) => {
             console.error(error.message); 
         }
     });
+
     bot.action('master_customer_overview', isMasterAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -166,7 +166,7 @@ module.exports = (bot) => {
                 const icon = p.action_type === 'DELETE' ? '🗑' : '💰';
                 return [{ text: `${icon} Anfrage prüfen`, callback_data: `master_view_appr_${p.id}` }];
             });
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]); // FIX
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]);
             await uiHelper.updateOrSend(ctx, '📋 *Ausstehende Anfragen:*', { inline_keyboard: keyboard });
         } catch (error) { console.error(error.message); }
     });
@@ -218,6 +218,7 @@ module.exports = (bot) => {
             return bot.handleUpdate(ctx.update);
         } catch (error) { console.error(error.message); }
     });
+
     bot.action(/^odel_confirm_([\w-]+)$/, isMasterAdmin, async (ctx) => {
         const orderId = ctx.match[1];
         try {
@@ -262,7 +263,7 @@ module.exports = (bot) => {
                 .filter(a => Number(a.telegram_id) !== Number(config.MASTER_ADMIN_ID))
                 .map(a => ([{ text: `❌ ${a.username || a.telegram_id} entlassen`, callback_data: `master_fire_${a.telegram_id}` }]));
             keyboard.push([{ text: '➕ Admin ernennen (ID)', callback_data: 'master_prompt_add_admin' }]);
-            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]); // FIX
+            keyboard.push([{ text: '🔙 Zurück', callback_data: 'master_shop_management' }]);
             await uiHelper.updateOrSend(ctx, '👥 *Personalverwaltung*', { inline_keyboard: keyboard });
         } catch (error) { console.error(error.message); }
     });
@@ -290,9 +291,6 @@ module.exports = (bot) => {
         }
     });
 
-    // ==========================================
-    // NEU: FEEDBACK VERWALTUNG FÜR MASTER
-    // ==========================================
     bot.action(/^master_manage_feedbacks(?:_(\d+))?$/, isMasterAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -301,7 +299,6 @@ module.exports = (bot) => {
             const offset = (page - 1) * limit;
 
             const stats = await feedbackRepo.getFeedbackStats();
-            // Der Master sieht hier die freigegebenen Feedbacks, um sie zu verwalten
             const { data: feedbacks, count: totalFeedbacks } = await feedbackRepo.getApprovedFeedbacks(limit, offset);
 
             const text = texts.getMasterFeedbackManagement(stats.average, stats.total);

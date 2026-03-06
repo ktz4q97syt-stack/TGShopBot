@@ -3,7 +3,7 @@
  * PROPRIETARY LICENSE. Weiterverkauf, Weitergabe und Vervielfältigung sind strengstens untersagt.
  * Siehe LICENSE Datei für Details.
  */
- const { Telegraf, Scenes, session } = require('telegraf');
+const { Telegraf, Scenes, session } = require('telegraf');
 const http = require('http');
 const config = require('./config');
 
@@ -13,7 +13,9 @@ const orderCommands = require('./bot/commands/orderCommands');
 
 const shopActions = require('./bot/actions/shopActions');
 const checkoutActions = require('./bot/actions/checkoutActions');
-const adminActions = require('./bot/actions/adminActions');
+const adminCoreActions = require('./bot/actions/adminCoreActions');
+const adminCategoryActions = require('./bot/actions/adminCategoryActions');
+const adminProductActions = require('./bot/actions/adminProductActions');
 const masterActions = require('./bot/actions/masterActions');
 const cartActions = require('./bot/actions/cartActions');
 const orderActions = require('./bot/actions/orderActions');
@@ -93,7 +95,9 @@ orderCommands(bot);
 shopActions(bot);
 cartActions(bot);
 checkoutActions(bot);
-adminActions(bot);
+adminCoreActions(bot);
+adminCategoryActions(bot);
+adminProductActions(bot);
 masterActions(bot);
 orderActions(bot);
 customerActions(bot);

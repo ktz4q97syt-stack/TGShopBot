@@ -1,3 +1,5 @@
+const texts = require('./texts');
+
 const updateOrSend = async (ctx, text, replyMarkup, imageUrl = null) => {
     const options = {
         parse_mode: 'Markdown',
@@ -59,4 +61,33 @@ const sendTemporary = async (ctx, text, seconds = 3) => {
     }
 };
 
-module.exports = { updateOrSend, sendTemporary };
+const sendProductMedia = async (ctx, imageUrl, text, replyMarkup) => {
+    const options = { parse_mode: 'Markdown', reply_markup: replyMarkup };
+    const hasMedia = ctx.callbackQuery?.message?.photo || ctx.callbackQuery?.message?.animation || ctx.callbackQuery?.message?.video;
+
+    if (imageUrl) {
+        if (ctx.callbackQuery?.message) await ctx.deleteMessage().catch(() => {});
+        try {
+            return await ctx.replyWithPhoto(imageUrl, { caption: text, ...options });
+        } catch (e1) {
+            try {
+                return await ctx.replyWithAnimation(imageUrl, { caption: text, ...options });
+            } catch (e2) {
+                try {
+                    return await ctx.replyWithVideo(imageUrl, { caption: text, ...options });
+                } catch (e3) {
+                    return await ctx.reply(text + texts.getAdminImageLoadError(), options);
+                }
+            }
+        }
+    } else {
+        if (hasMedia) {
+            if (ctx.callbackQuery?.message) await ctx.deleteMessage().catch(() => {});
+            return await ctx.reply(text, options);
+        } else {
+            return await updateOrSend(ctx, text, replyMarkup);
+        }
+    }
+};
+
+module.exports = { updateOrSend, sendTemporary, sendProductMedia };
