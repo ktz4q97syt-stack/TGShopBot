@@ -6,7 +6,7 @@ const uiHelper = require('../../utils/uiHelper');
 const formatters = require('../../utils/formatters');
 const texts = require('../../utils/texts');
 const masterMenu = require('../keyboards/masterMenu');
-const adminMenu = require('../keyboards/adminMenu');
+const adminKeyboards = require('../keyboards/adminKeyboards');
 const customerMenu = require('../keyboards/customerMenu');
 const config = require('../../config');
 
@@ -27,7 +27,7 @@ module.exports = (bot) => {
                 keyboard = masterMenu();
             } else if (role === 'admin') {
                 text = texts.getWelcomeText(false, 'admin');
-                keyboard = adminMenu();
+                keyboard = adminKeyboards.getAdminMenu(false);
             } else {
                 const hasOrders = await orderRepo.hasActiveOrders(userId);
                 text = texts.getWelcomeText(false, 'customer');
@@ -246,10 +246,10 @@ module.exports = (bot) => {
         ctx.answerCbQuery().catch(() => {});
         await ctx.editMessageText(texts.getAdminInfoText(), { 
             parse_mode: 'Markdown', 
-            reply_markup: { inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'admin_panel' }]] } 
+            reply_markup: adminKeyboards.getBackToAdminPanel()
         }).catch(() => ctx.reply(texts.getAdminInfoText(), { 
             parse_mode: 'Markdown', 
-            reply_markup: { inline_keyboard: [[{ text: '🔙 Zurück', callback_data: 'admin_panel' }]] } 
+            reply_markup: adminKeyboards.getBackToAdminPanel()
         }));
     });
 
