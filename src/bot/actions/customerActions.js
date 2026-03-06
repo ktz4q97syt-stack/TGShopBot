@@ -37,6 +37,11 @@ module.exports = (bot) => {
                     keyboard.push([{ text: `💸 Zahlen: ${order.order_id}`, callback_data: `confirm_pay_${order.order_id}` }]);
                 }
 
+                // NEU: Button für den digitalen Tresor
+                if (order.digital_delivery) {
+                    keyboard.push([{ text: `📥 Meine Digitale Lieferung ansehen`, callback_data: `view_dig_del_${order.order_id}` }]);
+                }
+
                 if (order.status === 'abgeschlossen') {
                     keyboard.push([{ text: `🗑 Löschen: ${order.order_id}`, callback_data: `cust_del_order_${order.order_id}` }]);
                 }
@@ -53,6 +58,27 @@ module.exports = (bot) => {
             });
         } catch (error) {
             console.error('My Orders Error:', error.message);
+        }
+    });
+
+    // NEU: Handler für den Abruf der digitalen Lieferung
+    bot.action(/^view_dig_del_(.+)$/, async (ctx) => {
+        try {
+            const orderId = ctx.match[1];
+            const order = await orderRepo.getOrderByOrderId(orderId);
+            
+            if (!order || !order.digital_delivery) {
+                return ctx.answerCbQuery('⚠️ Keine Lieferung gefunden.', { show_alert: true });
+            }
+            
+            ctx.answerCbQuery('Lieferung wird geladen...').catch(() => {});
+            
+            const msgText = texts.getDigitalDeliveryCustomerMessage(orderId, order.digital_delivery);
+            await ctx.reply(msgText + '\n\n_(Nachträglicher Abruf aus dem Archiv)_', { parse_mode: 'Markdown' });
+
+        } catch (error) {
+            console.error('View Digital Delivery Error:', error.message);
+            ctx.answerCbQuery('Fehler beim Laden.', { show_alert: true }).catch(() => {});
         }
     });
 

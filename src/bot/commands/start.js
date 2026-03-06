@@ -2,7 +2,7 @@ const userRepo = require('../../database/repositories/userRepo');
 const orderRepo = require('../../database/repositories/orderRepo');
 const settingsRepo = require('../../database/repositories/settingsRepo');
 const masterMenu = require('../keyboards/masterMenu');
-const adminMenu = require('../keyboards/adminMenu');
+const adminKeyboards = require('../keyboards/adminKeyboards');
 const customerMenu = require('../keyboards/customerMenu');
 const config = require('../../config');
 const texts = require('../../utils/texts');
@@ -50,7 +50,7 @@ module.exports = (bot) => {
             if (isMaster) {
                 keyboard = masterMenu();
             } else if (role === 'admin') {
-                keyboard = adminMenu();
+                keyboard = adminKeyboards.getAdminMenu(false);
             } else {
                 const hasOrders = await orderRepo.hasActiveOrders(userId);
                 keyboard = customerMenu(hasOrders);

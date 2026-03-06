@@ -7,7 +7,7 @@ const generateCustomOrderId = () => {
 
 const SELECT_FULL = `id, order_id, user_id, total_amount, status, details,
     shipping_link, payment_method_name,
-    delivery_method, admin_notes, tx_id, created_at, notification_msg_ids, feedback_invited`;
+    delivery_method, admin_notes, tx_id, created_at, notification_msg_ids, feedback_invited, digital_delivery`;
 
 const createOrder = async (userId, totalAmount, orderDetails, options = {}) => {
     const { shippingLink, paymentMethodName, deliveryMethod } = options;
@@ -26,7 +26,8 @@ const createOrder = async (userId, totalAmount, orderDetails, options = {}) => {
             delivery_method: deliveryMethod || 'none',
             admin_notes: [],
             notification_msg_ids: [],
-            feedback_invited: false
+            feedback_invited: false,
+            digital_delivery: null
         }])
         .select(SELECT_FULL);
 
@@ -202,6 +203,21 @@ const setFeedbackInvited = async (orderId, isInvited) => {
     }
 };
 
+const setDigitalDelivery = async (orderId, content) => {
+    try {
+        const { data, error } = await supabase
+            .from('orders')
+            .update({ digital_delivery: content })
+            .eq('order_id', orderId)
+            .select(SELECT_FULL);
+        if (error) throw error;
+        return data && data[0] ? data[0] : null;
+    } catch (error) {
+        console.error('Error saving digital delivery:', error.message);
+        return null;
+    }
+};
+
 module.exports = {
     createOrder, getOrderByOrderId, getOrderById,
     updateOrderStatus, updateOrderTxId, addAdminNote,
@@ -209,5 +225,5 @@ module.exports = {
     getOrdersByUser, getActiveOrdersByUser, hasActiveOrders,
     getOpenOrders, getAllOrders,
     addNotificationMsgId, clearNotificationMsgIds,
-    setFeedbackInvited
+    setFeedbackInvited, setDigitalDelivery
 };

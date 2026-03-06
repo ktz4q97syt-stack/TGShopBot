@@ -10,11 +10,10 @@ const { isAdmin } = require('../middlewares/auth');
 const config = require('../../config');
 const notificationService = require('../../services/notificationService');
 
-const FINAL_STATUSES = ['abgeschlossen', 'abgebrochen', 'loeschung_angefragt']; // UPDATE: 'loeschung_angefragt' hinzugefügt
+const FINAL_STATUSES = ['abgeschlossen', 'abgebrochen', 'loeschung_angefragt'];
 
 module.exports = (bot) => {
 
-    // (Die "my_orders" Funktion lassen wir hier zur Sicherheit drin, auch wenn sie primär in der customerActions.js wohnt)
     bot.action('my_orders', async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
@@ -77,7 +76,6 @@ module.exports = (bot) => {
     bot.action('admin_open_orders', isAdmin, async (ctx) => {
         ctx.answerCbQuery().catch(() => {});
         try {
-            // Holt jetzt nur die offenen Bestellungen via orderRepo.getOpenOrders
             const orders = await orderRepo.getOpenOrders(20);
             let text = '';
             const keyboard = [];
@@ -206,9 +204,6 @@ module.exports = (bot) => {
         } catch (error) { console.error(error.message); }
     });
 
-    // ==========================================
-    // NEU: LÖSCH-ANFRAGE VOM KUNDEN (Admin-Prüfung)
-    // ==========================================
     bot.action(/^cust_del_approve_(.+)$/, isAdmin, async (ctx) => {
         try {
             const orderId = ctx.match[1];
@@ -223,7 +218,6 @@ module.exports = (bot) => {
     bot.action(/^cust_del_reject_(.+)$/, isAdmin, async (ctx) => {
         try {
             const orderId = ctx.match[1];
-            // Wenn der Admin ablehnt, wird die Bestellung wieder "abgeschlossen" und taucht beim Kunden wieder auf
             await orderRepo.updateOrderStatus(orderId, 'abgeschlossen');
             ctx.answerCbQuery('❌ Löschung abgelehnt.').catch(() => {});
             if (ctx.callbackQuery.message) {
@@ -302,6 +296,7 @@ module.exports = (bot) => {
                 const sentMsg = await bot.telegram.sendMessage(order.user_id, customerMessage, { parse_mode: 'Markdown' }).catch(() => null);
                 
                 if (sentMsg) {
+                    await orderRepo.setDigitalDelivery(orderId, formattedContent);
                     await orderRepo.updateOrderStatus(orderId, 'abgeschlossen');
                     await orderRepo.addNotificationMsgId(orderId, sentMsg.chat.id, sentMsg.message_id);
                     await orderRepo.addAdminNote(orderId, ctx.from.username || ctx.from.id, `Digitale Lieferung gesendet.`);
