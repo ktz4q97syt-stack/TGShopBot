@@ -79,6 +79,13 @@ bot.use(session());
 bot.use(stage.middleware());
 bot.use(checkBan);
 
+// Update-Watchdog: Jeden eingehenden Update tracken
+// So erkennt keepAlive.js "silent polling death" zuverlässig
+bot.use((ctx, next) => {
+    keepAlive.notifyUpdate();
+    return next();
+});
+
 bot.catch((err, ctx) => {
     console.error(`Update Error [${ctx.updateType}]:`, err.message);
 });
